@@ -89,9 +89,12 @@ ParamsSetup (
 	PF_ParamDef		def;
 	
 	AEFX_CLR_STRUCT(def);
+	strcpy_s(def.name, "Impact Frame");
+	PF_ADD_CHECKBOX(def.name, FALSE, IMPACT_FRAME_DISK_ID, 0, 0);
 	
-	PF_ADD_CHECKBOX("Impact Frame", FALSE, IMPACT_FRAME_DISK_ID, 0, 0);
-	PF_ADD_CHECKBOX("Hold", FALSE, HOLD_DISK_ID, 0, 0);
+	AEFX_CLR_STRUCT(def);
+	strcpy_s(def.name, "Hold");
+	PF_ADD_CHECKBOX(def.name, FALSE, HOLD_DISK_ID, 0, 0);
 	
 	PF_ADD_FLOAT_SLIDERX("Radius", 
 						RADIUS_MIN,
