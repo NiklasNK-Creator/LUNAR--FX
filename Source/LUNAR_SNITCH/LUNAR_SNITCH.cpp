@@ -51,7 +51,6 @@ GlobalSetup (
 								PF_OutFlag2_SUPPORTS_SMART_RENDER	|
 								PF_OutFlag2_SUPPORTS_THREADED_RENDERING;
 
-	// For Premiere - declare supported pixel formats
 	if (in_dataP->appl_id == 'PrMr'){
 
 		AEFX_SuiteScoper<PF_PixelFormatSuite1> pixelFormatSuite = 
@@ -60,20 +59,19 @@ GlobalSetup (
 													kPFPixelFormatSuiteVersion1,
 													out_data);
 
-		//	Add the pixel formats we support in order of preference.
 		(*pixelFormatSuite->ClearSupportedPixelFormats)(in_dataP->effect_ref);	
 		(*pixelFormatSuite->AddSupportedPixelFormat)(
-														in_dataP->effect_ref,
-														PrPixelFormat_VUYA_4444_32f);
+													in_dataP->effect_ref,
+													PrPixelFormat_VUYA_4444_32f);
 		(*pixelFormatSuite->AddSupportedPixelFormat)(
-														in_dataP->effect_ref,
-														PrPixelFormat_BGRA_4444_32f);	
+													in_dataP->effect_ref,
+													PrPixelFormat_BGRA_4444_32f);	
 		(*pixelFormatSuite->AddSupportedPixelFormat)(
-														in_dataP->effect_ref,
-														PrPixelFormat_VUYA_4444_8u);
+													in_dataP->effect_ref,
+													PrPixelFormat_VUYA_4444_8u);
 		(*pixelFormatSuite->AddSupportedPixelFormat)(
-														in_dataP->effect_ref,
-														PrPixelFormat_BGRA_4444_8u);
+													in_dataP->effect_ref,
+													PrPixelFormat_BGRA_4444_8u);
 	}
 
 	return err;
@@ -91,7 +89,6 @@ ParamsSetup (
 	
 	AEFX_CLR_STRUCT(def);
 	
-	// Main intensity slider - controls everything
 	PF_ADD_FLOAT_SLIDERX("Intensity", 
 						INTENSITY_MIN,
 						INTENSITY_MAX,
@@ -108,25 +105,21 @@ ParamsSetup (
 	return err;
 }
 
-// Helper function to clamp values
 template<typename T>
 inline T clamp(T value, T min, T max) {
 	return (value < min) ? min : (value > max) ? max : value;
 }
 
-// Apply anime enhancement to a single pixel
 static void ApplySnitchEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, SnitchInfo *siP, A_long x, A_long y)
 {
 	if (!siP || !inP || !outP) return;
 	
 	PF_FpLong intensity = siP->intensityF / 100.0;
 	
-	// Calculate derived values from intensity
-	PF_FpLong chromatic = intensity * 0.3;  // Chromatic scales with intensity
-	PF_FpLong contrast = 1.0 + (intensity * 0.4);  // Contrast boost
-	PF_FpLong glow = intensity * 0.6;  // Glow scales with intensity
+	PF_FpLong chromatic = intensity * 0.3;
+	PF_FpLong contrast = 1.0 + (intensity * 0.4);
+	PF_FpLong glow = intensity * 0.6;
 	
-	// Start with original pixel
 	outP->alpha = inP->alpha;
 	outP->red = inP->red;
 	outP->green = inP->green;
@@ -134,12 +127,10 @@ static void ApplySnitchEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, SnitchInfo *siP,
 	
 	if (intensity <= 0.0) return;
 	
-	// 1. Apply contrast enhancement
 	PF_FpLong redF = (outP->red / 255.0 - 0.5) * contrast + 0.5;
 	PF_FpLong greenF = (outP->green / 255.0 - 0.5) * contrast + 0.5;
 	PF_FpLong blueF = (outP->blue / 255.0 - 0.5) * contrast + 0.5;
 	
-	// 2. Apply subtle chromatic aberration based on position
 	A_long centerX = siP->widthL / 2;
 	A_long centerY = siP->heightL / 2;
 	PF_FpLong distX = (x - centerX) / (PF_FpLong)centerX;
@@ -150,7 +141,6 @@ static void ApplySnitchEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, SnitchInfo *siP,
 	redF = clamp(redF + chromaticOffset, 0.0, 1.0);
 	blueF = clamp(blueF - chromaticOffset * 0.5, 0.0, 1.0);
 	
-	// 3. Apply anime-style color enhancement (boost reds and blues slightly)
 	if (redF > 0.6) {
 		redF = clamp(redF * (1.0 + 0.1 * intensity), 0.0, 1.0);
 	}
@@ -158,7 +148,6 @@ static void ApplySnitchEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, SnitchInfo *siP,
 		blueF = clamp(blueF * (1.0 + 0.05 * intensity), 0.0, 1.0);
 	}
 	
-	// 4. Apply subtle glow (brighten mid-tones)
 	PF_FpLong luminance = (redF * 0.299 + greenF * 0.587 + blueF * 0.114);
 	if (luminance > 0.2 && luminance < 0.8) {
 		PF_FpLong glowFactor = 1.0 + (glow * 0.2);
@@ -167,7 +156,6 @@ static void ApplySnitchEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, SnitchInfo *siP,
 		blueF = clamp(blueF * glowFactor, 0.0, 1.0);
 	}
 	
-	// Convert back to 8-bit
 	outP->red = (A_u_char)clamp(redF * 255.0, 0.0, 255.0);
 	outP->green = (A_u_char)clamp(greenF * 255.0, 0.0, 255.0);
 	outP->blue = (A_u_char)clamp(blueF * 255.0, 0.0, 255.0);
@@ -208,7 +196,6 @@ FilterImageBGRA_8u (
 	SnitchInfo *	siP		= reinterpret_cast<SnitchInfo*>(refcon);
 					
 	if (siP){
-		// Convert to standard PF_Pixel8 for processing
 		PF_Pixel8 tempIn, tempOut;
 		tempIn.alpha = inBGRA_8uP->alpha;
 		tempIn.red = inBGRA_8uP->red;
@@ -242,12 +229,10 @@ FilterImageVUYA_8u (
 	SnitchInfo *	siP		= reinterpret_cast<SnitchInfo*>(refcon);
 					
 	if (siP){
-		// For YUV, we'll primarily work on luma and preserve color
 		outVUYA_8uP->alpha = inVUYA_8uP->alpha;
 		outVUYA_8uP->Pb = inVUYA_8uP->Pb;
 		outVUYA_8uP->Pr = inVUYA_8uP->Pr;
 		
-		// Apply contrast and glow to luma channel
 		PF_FpLong intensity = siP->intensityF / 100.0;
 		PF_FpLong contrast = 1.0 + (intensity * 0.4);
 		PF_FpLong glow = intensity * 0.6;
@@ -255,10 +240,8 @@ FilterImageVUYA_8u (
 		if (intensity > 0.0) {
 			PF_FpLong lumaF = inVUYA_8uP->luma / 255.0;
 			
-			// Apply contrast
 			lumaF = (lumaF - 0.5) * contrast + 0.5;
 			
-			// Apply glow to mid-tones
 			if (lumaF > 0.2 && lumaF < 0.8) {
 				PF_FpLong glowFactor = 1.0 + (glow * intensity * 0.2);
 				lumaF = clamp(lumaF * glowFactor, 0.0, 1.0);
@@ -291,10 +274,8 @@ Render (
 	siP.widthL = in_dataP->width;
 	siP.heightL = in_dataP->height;
 
-	// Do high-bit depth rendering in Premiere Pro
 	if (in_dataP->appl_id == 'PrMr') {
 
-		// Get the Premiere pixel format suite
 		AEFX_SuiteScoper<PF_PixelFormatSuite1> pixelFormatSuite = 
 			AEFX_SuiteScoper<PF_PixelFormatSuite1>(	in_dataP,
 													kPFPixelFormatSuite,
@@ -314,12 +295,12 @@ Render (
 													out_data);
 
 			iterate8Suite->iterate(	in_dataP,
-									0,								// progress base
-									linesL,							// progress final
-									&params[SNITCH_INPUT]->u.ld,		// src 
-									NULL,							// area - null for all pixels
-									(void*)&siP,					// refcon - your custom data pointer
-									FilterImageBGRA_8u,				// pixel function pointer
+									0,
+									linesL,
+									&params[SNITCH_INPUT]->u.ld,
+									NULL,
+									(void*)&siP,
+									FilterImageBGRA_8u,
 									output);	
 
 		} else if (destinationPixelFormat == PrPixelFormat_VUYA_4444_8u){
@@ -331,16 +312,15 @@ Render (
 													out_data);
 
 			iterate8Suite->iterate(	in_dataP,
-									0,								// progress base
-									linesL,							// progress final
-									&params[SNITCH_INPUT]->u.ld,		// src 
-									NULL,							// area - null for all pixels
-									(void*)&siP,					// refcon - your custom data pointer
-									FilterImageVUYA_8u,				// pixel function pointer
+									0,
+									linesL,
+									&params[SNITCH_INPUT]->u.ld,
+									NULL,
+									(void*)&siP,
+									FilterImageVUYA_8u,
 									output);
 
 		} else {
-			//	Return error, because we don't know how to handle the specified pixel type
 			return PF_Err_UNRECOGNIZED_PARAM_TYPE;
 		}
 		
@@ -353,13 +333,13 @@ Render (
 												out_data);
 
 		iterate8Suite->iterate(	in_dataP,
-								0,								// progress base
-								linesL,							// progress final
-								&params[SNITCH_INPUT]->u.ld,		// src 
-								NULL,							// area - null for all pixels
-								(void*)&siP,					// refcon - your custom data pointer
-								FilterImage8,					// pixel function pointer
-								output);						// dest
+								0,
+								linesL,
+								&params[SNITCH_INPUT]->u.ld,
+								NULL,
+								(void*)&siP,
+								FilterImage8,
+								output);
 	} else {
 
 		AEFX_SuiteScoper<PF_WorldTransformSuite1> worldTransformSuite = 
@@ -368,11 +348,11 @@ Render (
 														kPFWorldTransformSuiteVersion1,
 														out_data);
 
-		worldTransformSuite->copy(	in_dataP->effect_ref,			// This effect ref (unique id)
-									&params[SNITCH_INPUT]->u.ld,		// Source
-									output,							// Dest
-									NULL,							// Source rect - null for all pixels
-									NULL);							// Dest rect - null for all pixels
+		worldTransformSuite->copy(	in_dataP->effect_ref,
+									&params[SNITCH_INPUT]->u.ld,
+									output,
+									NULL,
+									NULL);
 	}
 	return err;
 }
@@ -495,13 +475,11 @@ SmartRender(
 					
 					case PF_PixelFormat_ARGB128:
 		
-						// TODO: Implement 32f processing
 						err = PF_COPY(input_worldP, output_worldP, NULL, NULL);
 						break;
 						
 					case PF_PixelFormat_ARGB64:
 										
-						// TODO: Implement 16-bit processing
 						err = PF_COPY(input_worldP, output_worldP, NULL, NULL);
 						break;
 						
@@ -542,10 +520,10 @@ PF_Err PluginDataEntryFunction(
 	result = PF_REGISTER_EFFECT(
 		inPtr,
 		inPluginDataCallBackPtr,
-		"LUNAR.SNITCH", // Name
-		"LUNAR SNITCH", // Match Name
-		"LUNAR --FX", // Category
-		AE_RESERVED_INFO); // Reserved Info
+		"LUNAR.SNITCH",
+		"LUNAR SNITCH",
+		"LUNAR --FX",
+		AE_RESERVED_INFO);
 
 	return result;
 }
@@ -584,7 +562,6 @@ EffectMain(
 				break;
 		}
 	} catch(PF_Err &thrown_err) {
-		// Never EVER throw exceptions into AE.
 		err = thrown_err;
 	}
 	return err;
