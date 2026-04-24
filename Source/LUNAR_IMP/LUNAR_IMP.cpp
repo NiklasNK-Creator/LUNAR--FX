@@ -90,10 +90,10 @@ ParamsSetup (
 	
 	AEFX_CLR_STRUCT(def);
 	
-	PF_ADD_POPUP("Impact Frame", 0, 1, "No\0Yes\0", IMPACT_FRAME_DISK_ID);
+	PF_ADD_POPUP("Impact Frame", 0, 0, "No\0Yes\0", IMPACT_FRAME_DISK_ID);
 	
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP("Hold", 0, 1, "No\0Yes\0", HOLD_DISK_ID);
+	PF_ADD_POPUP("Hold", 0, 0, "No\0Yes\0", HOLD_DISK_ID);
 	
 	PF_ADD_FLOAT_SLIDERX("Radius", 
 						RADIUS_MIN,
@@ -107,7 +107,7 @@ ParamsSetup (
 						RADIUS_DISK_ID);
 	
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP("Edge Type", 0, 6, "Fade\0Hard\0Flame\0Paint\0Grade\0Blend\0Rough\0", EDGE_TYPE_DISK_ID);
+	PF_ADD_POPUP("Edge Type", 0, 0, "Fade\0Hard\0Flame\0Paint\0Grade\0Blend\0Rough\0", EDGE_TYPE_DISK_ID);
 	
 	out_data->num_params = IMP_NUM_PARAMS;
 
