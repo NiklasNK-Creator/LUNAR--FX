@@ -44,32 +44,21 @@ enum {
 	IMP_INPUT = 0,
 	IMP_IMPACT_FRAME,
 	IMP_HOLD,
-	IMP_ANCHOR,
-	IMP_RADIUS,
-	IMP_EDGE_TYPE,
 	IMP_NUM_PARAMS
 };
 
 enum {
 	IMPACT_FRAME_DISK_ID = 1,
-	HOLD_DISK_ID,
-	ANCHOR_DISK_ID,
-	RADIUS_DISK_ID,
-	EDGE_TYPE_DISK_ID
+	HOLD_DISK_ID
 };
 
 enum {
 	StrID_NONE = 0,
 	StrID_HoldChoices,
-	StrID_EdgeTypeChoices,
 	StrID_NUMTYPES
 };
 
 #define STR(x) GetStringPtr(x)
-
-#define RADIUS_MIN		0
-#define RADIUS_MAX		100
-#define RADIUS_DEFAULT	50
 
 #define INTENSITY_MIN	0
 #define INTENSITY_MAX	100
@@ -91,15 +80,10 @@ extern "C" {
 }
 
 typedef struct ImpInfo {
-	PF_FpLong	radiusF;
-	A_long		edgeTypeL;
 	A_long		widthL;
 	A_long		heightL;
 	PF_FpLong	impactIntensityF;
 	A_Boolean	holdActiveB;
-	PF_Fixed	anchorX;
-	PF_Fixed	anchorY;
-	char		impactFilePath[256];
 } ImpInfo, *ImpInfoP, **ImpInfoH;
 
 typedef struct {

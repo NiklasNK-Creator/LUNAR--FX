@@ -103,21 +103,6 @@ ParamsSetup (
 	
 	PF_ADD_POPUP("Hold", 2, 0, STR(StrID_HoldChoices), HOLD_DISK_ID);
 	
-	PF_ADD_POINT("Anchor", 50, 50, FALSE, ANCHOR_DISK_ID);
-	
-	PF_ADD_FLOAT_SLIDERX("Radius", 
-						RADIUS_MIN,
-						RADIUS_MAX,
-						RADIUS_MIN,
-						RADIUS_MAX,
-						RADIUS_DEFAULT,
-						SLIDER_PRECISION,
-						DISPLAY_FLAGS,
-						0,
-						RADIUS_DISK_ID);
-	
-	PF_ADD_POPUP("Edge Type", 7, 0, STR(StrID_EdgeTypeChoices), EDGE_TYPE_DISK_ID);
-	
 	out_data->num_params = IMP_NUM_PARAMS;
 
 	return err;
@@ -175,9 +160,9 @@ static PF_Err LoadFrameFromTempFile(char *filePath, PF_Pixel8 *frameBuffer, A_lo
 	return err;
 }
 
-static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, PF_Pixel8 *impactP, ImpInfo *iiP, A_long x, A_long y)
+static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, ImpInfo *iiP)
 {
-	if (!iiP || !inP || !outP || !impactP) return;
+	if (!iiP || !inP || !outP) return;
 	
 	PF_FpLong intensity = iiP->impactIntensityF / 100.0;
 	
@@ -186,51 +171,7 @@ static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, PF_Pixel8 *impactP,
 		return;
 	}
 	
-	PF_FpLong radius = iiP->radiusF / 100.0;
-	
-	if (radius <= 0.0) {
-		*outP = *inP;
-		return;
-	}
-	
-	if (radius >= 1.0) {
-		*outP = *inP;
-		return;
-	}
-	
-	PF_FpLong anchorX = FIX_2_FLOAT(iiP->anchorX) * iiP->widthL / 100.0;
-	PF_FpLong anchorY = FIX_2_FLOAT(iiP->anchorY) * iiP->heightL / 100.0;
-	
-	PF_FpLong distX = (x - anchorX) / (PF_FpLong)iiP->widthL;
-	PF_FpLong distY = (y - anchorY) / (PF_FpLong)iiP->heightL;
-	PF_FpLong distance = sqrt(distX * distX + distY * distY);
-	
-	PF_FpLong blast = clamp((1.0 - distance / radius), 0.0, 1.0);
-	
-	switch (iiP->edgeTypeL) {
-		case 0:
-			blast = blast * blast * (3.0 - 2.0 * blast);
-			break;
-		case 1:
-			blast = blast < 0.5 ? 0.0 : 1.0;
-			break;
-		case 2:
-			blast = pow(blast, 0.5);
-			break;
-		case 3:
-			blast = blast * blast;
-			break;
-		case 4:
-			blast = pow(blast, 3.0);
-			break;
-		case 5:
-			break;
-		case 6:
-			blast = 1.0 - pow(1.0 - blast, 2.0);
-			break;
-	}
-	
-	PF_FpLong brightness = 1.0 + blast * 0.5 * intensity;
+	PF_FpLong brightness = 1.0 + intensity * 0.5;
 	
 	outP->alpha = inP->alpha;
 	outP->red = (A_u_char)clamp(inP->red * brightness, 0.0, 255.0);
@@ -257,7 +198,7 @@ FilterImage8 (
 		
 		if (iiP->holdActiveB && capturedFrameBuffer && bufferWidth == iiP->widthL && bufferHeight == iiP->heightL) {
 			PF_Pixel8 *capturedPixelP = capturedFrameBuffer + yL * iiP->widthL + xL;
-			ApplyImpEffect8(capturedPixelP, outP, capturedPixelP, iiP, xL, yL);
+			ApplyImpEffect8(capturedPixelP, outP, iiP);
 		} else {
 			if (!capturedFrameBuffer || bufferWidth != iiP->widthL || bufferHeight != iiP->heightL) {
 				if (capturedFrameBuffer) {
@@ -270,7 +211,7 @@ FilterImage8 (
 			
 			if (capturedFrameBuffer) {
 				capturedFrameBuffer[yL * iiP->widthL + xL] = *inP;
-				ApplyImpEffect8(inP, outP, inP, iiP, xL, yL);
+				ApplyImpEffect8(inP, outP, iiP);
 			} else {
 				*outP = *inP;
 			}
@@ -296,13 +237,9 @@ Render (
 	AEFX_CLR_STRUCT(iiP);
 	
 	linesL 		= output->extent_hint.bottom - output->extent_hint.top;
-	iiP.radiusF = params[IMP_RADIUS]->u.fs_d.value;
-	iiP.edgeTypeL = params[IMP_EDGE_TYPE]->u.pd.value;
 	iiP.widthL = in_dataP->width;
 	iiP.heightL = in_dataP->height;
 	iiP.holdActiveB = params[IMP_HOLD]->u.pd.value == 1;
-	iiP.anchorX = params[IMP_ANCHOR]->u.td.x_value;
-	iiP.anchorY = params[IMP_ANCHOR]->u.td.y_value;
 	iiP.impactIntensityF = params[IMP_IMPACT_FRAME]->u.fs_d.value;
 
 	if (in_dataP->appl_id == 'PrMr') {
@@ -355,7 +292,7 @@ Render (
 			return PF_Err_UNRECOGNIZED_PARAM_TYPE;
 		}
 		
-	} else if(iiP.radiusF > 0.0) {
+	} else if(iiP.impactIntensityF > 0.0) {
 
 		AEFX_SuiteScoper<PF_Iterate8Suite1> iterate8Suite = 
 			AEFX_SuiteScoper<PF_Iterate8Suite1>(in_dataP,
@@ -395,15 +332,12 @@ PreRender(
 	PF_PreRenderExtra	*extraP)
 {
 	PF_Err err = PF_Err_NONE;
-	PF_ParamDef intensity_param, hold_param, anchor_param, radius_param, edge_param;
+	PF_ParamDef intensity_param, hold_param;
 	PF_RenderRequest req = extraP->input->output_request;
 	PF_CheckoutResult in_result;
 	
 	AEFX_CLR_STRUCT(intensity_param);
 	AEFX_CLR_STRUCT(hold_param);
-	AEFX_CLR_STRUCT(anchor_param);
-	AEFX_CLR_STRUCT(radius_param);
-	AEFX_CLR_STRUCT(edge_param);
 
 	AEFX_SuiteScoper<PF_HandleSuite1> handleSuite = AEFX_SuiteScoper<PF_HandleSuite1>(	in_dataP,
 																					kPFHandleSuite,
@@ -430,35 +364,10 @@ PreRender(
 									in_dataP->time_scale, 
 									&hold_param));
 			
-			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
-									IMP_ANCHOR, 
-									in_dataP->current_time, 
-									in_dataP->time_step, 
-									in_dataP->time_scale, 
-									&anchor_param));
-			
-			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
-									IMP_RADIUS, 
-									in_dataP->current_time, 
-									in_dataP->time_step, 
-									in_dataP->time_scale, 
-									&radius_param));
-			
-			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
-									IMP_EDGE_TYPE, 
-									in_dataP->current_time, 
-									in_dataP->time_step, 
-									in_dataP->time_scale, 
-									&edge_param));
-			
 			if (!err){
-				infoP->radiusF = radius_param.u.fs_d.value;
-				infoP->edgeTypeL = edge_param.u.pd.value;
 				infoP->widthL = in_dataP->width;
 				infoP->heightL = in_dataP->height;
 				infoP->holdActiveB = hold_param.u.pd.value == 1;
-				infoP->anchorX = anchor_param.u.td.x_value;
-				infoP->anchorY = anchor_param.u.td.y_value;
 				infoP->impactIntensityF = intensity_param.u.fs_d.value;
 			}
 			
@@ -518,7 +427,7 @@ SmartRender(
 																			kPFWorldSuiteVersion2,
 																			out_data);
 		
-		if (infoP->radiusF == 0.0) {
+		if (infoP->impactIntensityF == 0.0) {
 			err = PF_COPY(input_worldP, output_worldP, NULL, NULL);
 		} else {
 			ERR(wsP->PF_GetPixelFormat(input_worldP, &format));

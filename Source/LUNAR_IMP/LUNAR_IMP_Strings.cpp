@@ -19,14 +19,7 @@ typedef struct {
 TableString		g_strs[StrID_NUMTYPES] = {
 	StrID_NONE,						"",
 	StrID_HoldChoices,				"No|"
-									"Yes",
-	StrID_EdgeTypeChoices,			"Fade|"
-									"Hard|"
-									"Flame|"
-									"Paint|"
-									"Grade|"
-									"Blend|"
-									"Rough"
+									"Yes"
 };
 
 char *GetStringPtr(int strNum)
