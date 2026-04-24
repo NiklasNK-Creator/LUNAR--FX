@@ -178,7 +178,7 @@ static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, PF_Pixel8 *impactP,
 	}
 	
 	if (radius >= 1.0) {
-		*outP = *impactP;
+		*outP = *inP;
 		return;
 	}
 	
@@ -189,41 +189,37 @@ static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, PF_Pixel8 *impactP,
 	PF_FpLong distY = (y - anchorY) / (PF_FpLong)iiP->heightL;
 	PF_FpLong distance = sqrt(distX * distX + distY * distY);
 	
-	PF_FpLong blend = clamp(distance / radius, 0.0, 1.0);
+	PF_FpLong blast = clamp((1.0 - distance / radius), 0.0, 1.0);
 	
 	switch (iiP->edgeTypeL) {
 		case 0:
-			blend = 1.0 - blend;
-			blend = blend * blend * (3.0 - 2.0 * blend);
+			blast = blast * blast * (3.0 - 2.0 * blast);
 			break;
 		case 1:
-			blend = blend < 0.5 ? 0.0 : 1.0;
+			blast = blast < 0.5 ? 0.0 : 1.0;
 			break;
 		case 2:
-			blend = 1.0 - blend;
-			blend = pow(blend, 0.5);
+			blast = pow(blast, 0.5);
 			break;
 		case 3:
-			blend = 1.0 - blend;
-			blend = blend * blend;
+			blast = blast * blast;
 			break;
 		case 4:
-			blend = 1.0 - blend;
-			blend = pow(blend, 3.0);
+			blast = pow(blast, 3.0);
 			break;
 		case 5:
-			blend = 1.0 - blend;
 			break;
 		case 6:
-			blend = 1.0 - blend;
-			blend = 1.0 - pow(1.0 - blend, 2.0);
+			blast = 1.0 - pow(1.0 - blast, 2.0);
 			break;
 	}
 	
+	PF_FpLong brightness = 1.0 + blast * 0.5;
+	
 	outP->alpha = inP->alpha;
-	outP->red = (A_u_char)clamp(inP->red * (1.0 - blend) + impactP->red * blend, 0.0, 255.0);
-	outP->green = (A_u_char)clamp(inP->green * (1.0 - blend) + impactP->green * blend, 0.0, 255.0);
-	outP->blue = (A_u_char)clamp(inP->blue * (1.0 - blend) + impactP->blue * blend, 0.0, 255.0);
+	outP->red = (A_u_char)clamp(inP->red * brightness, 0.0, 255.0);
+	outP->green = (A_u_char)clamp(inP->green * brightness, 0.0, 255.0);
+	outP->blue = (A_u_char)clamp(inP->blue * brightness, 0.0, 255.0);
 }
 
 static PF_Err 
@@ -236,29 +232,38 @@ FilterImage8 (
 {
 	PF_Err			err = PF_Err_NONE;
 	
-	ImpInfo *	iiP		= reinterpret_cast<ImpInfo*>(refcon);
+	ImpInfo *		iiP		= reinterpret_cast<ImpInfo*>(refcon);
 				
-	if (iiP && iiP->impactFrameL > 0 && strlen(iiP->impactFilePath) > 0) {
-		static PF_Pixel8 *impactFrameBuffer = NULL;
+	if (iiP) {
+		static PF_Pixel8 *capturedFrameBuffer = NULL;
 		static A_long bufferWidth = 0;
 		static A_long bufferHeight = 0;
+		static A_long capturedFrameTime = -1;
 		
-		if (!impactFrameBuffer || bufferWidth != iiP->widthL || bufferHeight != iiP->heightL) {
-			if (impactFrameBuffer) {
-				free(impactFrameBuffer);
+		if (iiP->impactFrameL > 0) {
+			if (iiP->holdActiveB && capturedFrameBuffer && bufferWidth == iiP->widthL && bufferHeight == iiP->heightL) {
+				PF_Pixel8 *capturedPixelP = capturedFrameBuffer + yL * iiP->widthL + xL;
+				ApplyImpEffect8(capturedPixelP, outP, capturedPixelP, iiP, xL, yL);
+			} else {
+				if (!capturedFrameBuffer || bufferWidth != iiP->widthL || bufferHeight != iiP->heightL) {
+					if (capturedFrameBuffer) {
+						free(capturedFrameBuffer);
+					}
+					bufferWidth = iiP->widthL;
+					bufferHeight = iiP->heightL;
+					capturedFrameBuffer = (PF_Pixel8*)malloc(bufferWidth * bufferHeight * sizeof(PF_Pixel8));
+				}
+				
+				if (capturedFrameBuffer) {
+					capturedFrameBuffer[yL * iiP->widthL + xL] = *inP;
+					if (xL == bufferWidth - 1 && yL == bufferHeight - 1) {
+						capturedFrameTime = iiP->impactFrameL;
+					}
+					ApplyImpEffect8(inP, outP, inP, iiP, xL, yL);
+				} else {
+					*outP = *inP;
+				}
 			}
-			bufferWidth = iiP->widthL;
-			bufferHeight = iiP->heightL;
-			impactFrameBuffer = (PF_Pixel8*)malloc(bufferWidth * bufferHeight * sizeof(PF_Pixel8));
-			
-			if (impactFrameBuffer) {
-				LoadFrameFromTempFile(iiP->impactFilePath, impactFrameBuffer, bufferWidth, bufferHeight);
-			}
-		}
-		
-		if (impactFrameBuffer) {
-			PF_Pixel8 *impactPixelP = impactFrameBuffer + yL * iiP->widthL + xL;
-			ApplyImpEffect8(inP, outP, impactPixelP, iiP, xL, yL);
 		} else {
 			*outP = *inP;
 		}
@@ -290,13 +295,8 @@ Render (
 	iiP.holdActiveB = params[IMP_HOLD]->u.pd.value == 1;
 	iiP.anchorX = params[IMP_ANCHOR]->u.td.x_value;
 	iiP.anchorY = params[IMP_ANCHOR]->u.td.y_value;
-	iiP.impactFilePath[0] = '\0';
 	
 	if (params[IMP_IMPACT_FRAME]->u.pd.value == 1) {
-		if (iiP.holdActiveB) {
-		} else {
-			SaveFrameToTempFile(in_dataP, &params[IMP_INPUT]->u.ld, iiP.widthL, iiP.heightL, iiP.impactFilePath);
-		}
 		iiP.impactFrameL = in_dataP->current_time;
 	} else {
 		iiP.impactFrameL = 0;
@@ -409,14 +409,10 @@ PreRender(
 
 	PF_Handle infoH	= handleSuite->host_new_handle(sizeof(ImpInfo));
 	
-	if (infoH){
-
+	if (infoH) {
 		ImpInfo *infoP = reinterpret_cast<ImpInfo*>(handleSuite->host_lock_handle(infoH));
 		
-		if (infoP){
-
-			extraP->output->pre_render_data = infoH;
-			
+		if (infoP) {
 			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
 									IMP_IMPACT_FRAME, 
 									in_dataP->current_time, 
@@ -460,7 +456,6 @@ PreRender(
 				infoP->holdActiveB = hold_param.u.pd.value == 1;
 				infoP->anchorX = anchor_param.u.td.x_value;
 				infoP->anchorY = anchor_param.u.td.y_value;
-				infoP->impactFilePath[0] = '\0';
 				
 				if (impact_param.u.pd.value == 1) {
 					infoP->impactFrameL = in_dataP->current_time;
@@ -477,14 +472,20 @@ PreRender(
 											in_dataP->time_step,
 											in_dataP->time_scale,
 											&in_result));
+											
+			if (!err) {
+				UnionLRect(&in_result.result_rect, &extraP->output->result_rect);
+				UnionLRect(&in_result.max_result_rect, &extraP->output->max_result_rect);
+			}
 			
-			UnionLRect(&in_result.result_rect, 		&extraP->output->result_rect);
-			UnionLRect(&in_result.max_result_rect, 	&extraP->output->max_result_rect);		
 			handleSuite->host_unlock_handle(infoH);
 		}
+		
+		extraP->output->pre_render_data = infoH;
 	} else {
 		err = PF_Err_OUT_OF_MEMORY;
 	}
+	
 	return err;
 }
 
@@ -518,15 +519,6 @@ SmartRender(
 																			kPFWorldSuite,
 																			kPFWorldSuiteVersion2,
 																			out_data);
-		
-		infoP->impactFilePath[0] = '\0';
-		
-		if (infoP->impactFrameL > 0) {
-			if (infoP->holdActiveB) {
-			} else {
-				SaveFrameToTempFile(in_data, input_worldP, infoP->widthL, infoP->heightL, infoP->impactFilePath);
-			}
-		}
 		
 		if (infoP->radiusF == 0.0) {
 			err = PF_COPY(input_worldP, output_worldP, NULL, NULL);
