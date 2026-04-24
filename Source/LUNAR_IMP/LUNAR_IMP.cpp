@@ -9,8 +9,6 @@
 /*                                                                 */
 /*******************************************************************/
 
-#define _CRT_SECURE_NO_WARNINGS
-
 #include "LUNAR_IMP.h"
 #include <stdio.h>
 
@@ -92,12 +90,10 @@ ParamsSetup (
 	
 	AEFX_CLR_STRUCT(def);
 	
-	strcpy(def.name, "Impact Frame");
-	PF_ADD_CHECKBOX(def.name, FALSE, IMPACT_FRAME_DISK_ID, 0, 0);
+	PF_ADD_POPUP("Impact Frame", 0, 1, "No\0Yes\0", IMPACT_FRAME_DISK_ID);
 	
 	AEFX_CLR_STRUCT(def);
-	strcpy(def.name, "Hold");
-	PF_ADD_CHECKBOX(def.name, FALSE, HOLD_DISK_ID, 0, 0);
+	PF_ADD_POPUP("Hold", 0, 1, "No\0Yes\0", HOLD_DISK_ID);
 	
 	PF_ADD_FLOAT_SLIDERX("Radius", 
 						RADIUS_MIN,
@@ -292,10 +288,10 @@ Render (
 	iiP.edgeTypeL = params[IMP_EDGE_TYPE]->u.pd.value;
 	iiP.widthL = in_dataP->width;
 	iiP.heightL = in_dataP->height;
-	iiP.holdActiveB = params[IMP_HOLD]->u.bd.value;
+	iiP.holdActiveB = params[IMP_HOLD]->u.pd.value == 1;
 	iiP.impactFilePath[0] = '\0';
 	
-	if (params[IMP_IMPACT_FRAME]->u.bd.value) {
+	if (params[IMP_IMPACT_FRAME]->u.pd.value == 1) {
 		if (iiP.holdActiveB) {
 		} else {
 			SaveFrameToTempFile(in_dataP, &params[IMP_INPUT]->u.ld, iiP.widthL, iiP.heightL, iiP.impactFilePath);
@@ -452,10 +448,10 @@ PreRender(
 				infoP->edgeTypeL = edge_param.u.pd.value;
 				infoP->widthL = in_dataP->width;
 				infoP->heightL = in_dataP->height;
-				infoP->holdActiveB = hold_param.u.bd.value;
+				infoP->holdActiveB = hold_param.u.pd.value == 1;
 				infoP->impactFilePath[0] = '\0';
 				
-				if (impact_param.u.bd.value) {
+				if (impact_param.u.pd.value == 1) {
 					infoP->impactFrameL = in_dataP->current_time;
 				} else {
 					infoP->impactFrameL = 0;
