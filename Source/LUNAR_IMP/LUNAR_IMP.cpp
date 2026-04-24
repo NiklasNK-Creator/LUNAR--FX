@@ -100,7 +100,8 @@ ParamsSetup (
 						DISPLAY_FLAGS,
 						0,
 						IMPACT_FRAME_DISK_ID);
-	
+
+	AEFX_CLR_STRUCT(def);
 	PF_ADD_POPUP("Hold", 2, 0, STR(StrID_HoldChoices), HOLD_DISK_ID);
 	
 	out_data->num_params = IMP_NUM_PARAMS;
