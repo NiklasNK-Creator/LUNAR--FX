@@ -5,7 +5,7 @@
 /*                                                                 */
 /* Copyright 2026 LUNAR --FX. All Rights Reserved.                 */
 /*                                                                 */
-/* Subtle anime enhancement effect for AMV editing                 */
+/* Let your edit shine like a moon                                 */
 /*                                                                 */
 /*******************************************************************/
 

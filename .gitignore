@@ -47,6 +47,7 @@ Documentation/
 
 # SDK (too large for repo)
 SDK/
+*.zip
 
 # Windows
 Thumbs.db
