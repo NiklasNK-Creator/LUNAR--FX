@@ -55,3 +55,7 @@ Desktop.ini
 
 # PyInstaller
 *.spec
+
+# Release scripts
+release.py
+create_release.py
