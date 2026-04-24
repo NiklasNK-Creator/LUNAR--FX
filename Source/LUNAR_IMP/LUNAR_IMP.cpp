@@ -12,9 +12,17 @@
 #include "LUNAR_IMP.h"
 #include <stdio.h>
 
-static char impact_frame_choices[] = "No\0Yes\0";
-static char hold_choices[] = "No\0Yes\0";
-static char edge_type_choices[] = "Fade\0Hard\0Flame\0Paint\0Grade\0Blend\0Rough\0";
+static char impact_frame_choices[] = "No|"
+									   "Yes";
+static char hold_choices[] = "No|"
+							  "Yes";
+static char edge_type_choices[] = "Fade|"
+								   "Hard|"
+								   "Flame|"
+								   "Paint|"
+								   "Grade|"
+								   "Blend|"
+								   "Rough";
 
 static PF_Err 
 About (	
@@ -96,10 +104,8 @@ ParamsSetup (
 	
 	PF_ADD_POPUP("Impact Frame", 2, 0, impact_frame_choices, IMPACT_FRAME_DISK_ID);
 	
-	AEFX_CLR_STRUCT(def);
 	PF_ADD_POPUP("Hold", 2, 0, hold_choices, HOLD_DISK_ID);
 	
-	AEFX_CLR_STRUCT(def);
 	PF_ADD_POINT("Anchor", 50, 50, FALSE, ANCHOR_DISK_ID);
 	
 	PF_ADD_FLOAT_SLIDERX("Radius", 
@@ -113,7 +119,6 @@ ParamsSetup (
 						0,
 						RADIUS_DISK_ID);
 	
-	AEFX_CLR_STRUCT(def);
 	PF_ADD_POPUP("Edge Type", 7, 0, edge_type_choices, EDGE_TYPE_DISK_ID);
 	
 	out_data->num_params = IMP_NUM_PARAMS;
