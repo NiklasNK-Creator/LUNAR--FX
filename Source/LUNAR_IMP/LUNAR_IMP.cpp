@@ -107,7 +107,6 @@ ParamsSetup (
 						RADIUS_DISK_ID);
 	
 	AEFX_CLR_STRUCT(def);
-	def.ui_flags = PF_PUI_CONTROL;
 	PF_ADD_POPUP("Edge Type", 0, 7, "Fade\0Hard\0Flame\0Paint\0Grade\0Blend\0Rough\0", EDGE_TYPE_DISK_ID);
 	
 	out_data->num_params = IMP_NUM_PARAMS;
