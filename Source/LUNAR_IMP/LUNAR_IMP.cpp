@@ -89,7 +89,6 @@ ParamsSetup (
 	PF_ParamDef		def;
 	
 	AEFX_CLR_STRUCT(def);
-	
 	PF_ADD_FLOAT_SLIDERX("Intensity", 
 						INTENSITY_MIN,
 						INTENSITY_MAX,
@@ -99,10 +98,7 @@ ParamsSetup (
 						SLIDER_PRECISION,
 						DISPLAY_FLAGS,
 						0,
-						IMPACT_FRAME_DISK_ID);
-
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP("Hold", 2, 0, STR(StrID_HoldChoices), HOLD_DISK_ID);
+						INTENSITY_DISK_ID);
 	
 	out_data->num_params = IMP_NUM_PARAMS;
 
@@ -112,53 +108,6 @@ ParamsSetup (
 template<typename T>
 inline T clamp(T value, T min, T max) {
 	return (value < min) ? min : (value > max) ? max : value;
-}
-
-static PF_Err SaveFrameToTempFile(PF_InData *in_data, PF_LayerDef *input_layer, A_long width, A_long height, char *filePath)
-{
-	PF_Err err = PF_Err_NONE;
-	
-	GetTempPathA(255, filePath);
-	strcat_s(filePath, 256, "LUNAR_IMP_frame.raw");
-	
-	FILE *file = NULL;
-	fopen_s(&file, filePath, "wb");
-	
-	if (file) {
-		PF_EffectWorld *input_world = reinterpret_cast<PF_EffectWorld*>(input_layer);
-		
-		for (A_long y = 0; y < height; y++) {
-			PF_Pixel8 *srcP = (PF_Pixel8*)((A_u_char*)input_world->data + y * input_world->rowbytes);
-			fwrite(srcP, sizeof(PF_Pixel8), width, file);
-		}
-		
-		fclose(file);
-	} else {
-		err = PF_Err_OUT_OF_MEMORY;
-	}
-	
-	return err;
-}
-
-static PF_Err LoadFrameFromTempFile(char *filePath, PF_Pixel8 *frameBuffer, A_long width, A_long height)
-{
-	PF_Err err = PF_Err_NONE;
-	
-	FILE *file = NULL;
-	fopen_s(&file, filePath, "rb");
-	
-	if (file) {
-		for (A_long y = 0; y < height; y++) {
-			PF_Pixel8 *dstP = frameBuffer + y * width;
-			fread(dstP, sizeof(PF_Pixel8), width, file);
-		}
-		
-		fclose(file);
-	} else {
-		err = PF_Err_OUT_OF_MEMORY;
-	}
-	
-	return err;
 }
 
 static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, ImpInfo *iiP)
@@ -193,30 +142,7 @@ FilterImage8 (
 	ImpInfo *		iiP		= reinterpret_cast<ImpInfo*>(refcon);
 				
 	if (iiP && iiP->impactIntensityF > 0.0) {
-		static PF_Pixel8 *capturedFrameBuffer = NULL;
-		static A_long bufferWidth = 0;
-		static A_long bufferHeight = 0;
-		
-		if (iiP->holdActiveB && capturedFrameBuffer && bufferWidth == iiP->widthL && bufferHeight == iiP->heightL) {
-			PF_Pixel8 *capturedPixelP = capturedFrameBuffer + yL * iiP->widthL + xL;
-			ApplyImpEffect8(capturedPixelP, outP, iiP);
-		} else {
-			if (!capturedFrameBuffer || bufferWidth != iiP->widthL || bufferHeight != iiP->heightL) {
-				if (capturedFrameBuffer) {
-					free(capturedFrameBuffer);
-				}
-				bufferWidth = iiP->widthL;
-				bufferHeight = iiP->heightL;
-				capturedFrameBuffer = (PF_Pixel8*)malloc(bufferWidth * bufferHeight * sizeof(PF_Pixel8));
-			}
-			
-			if (capturedFrameBuffer) {
-				capturedFrameBuffer[yL * iiP->widthL + xL] = *inP;
-				ApplyImpEffect8(inP, outP, iiP);
-			} else {
-				*outP = *inP;
-			}
-		}
+		ApplyImpEffect8(inP, outP, iiP);
 	} else {
 		*outP = *inP;
 	}
@@ -238,10 +164,7 @@ Render (
 	AEFX_CLR_STRUCT(iiP);
 	
 	linesL 		= output->extent_hint.bottom - output->extent_hint.top;
-	iiP.widthL = in_dataP->width;
-	iiP.heightL = in_dataP->height;
-	iiP.holdActiveB = params[IMP_HOLD]->u.pd.value == 1;
-	iiP.impactIntensityF = params[IMP_IMPACT_FRAME]->u.fs_d.value;
+	iiP.impactIntensityF = params[IMP_INTENSITY]->u.fs_d.value;
 
 	if (in_dataP->appl_id == 'PrMr') {
 
@@ -333,12 +256,11 @@ PreRender(
 	PF_PreRenderExtra	*extraP)
 {
 	PF_Err err = PF_Err_NONE;
-	PF_ParamDef intensity_param, hold_param;
+	PF_ParamDef intensity_param;
 	PF_RenderRequest req = extraP->input->output_request;
 	PF_CheckoutResult in_result;
 	
 	AEFX_CLR_STRUCT(intensity_param);
-	AEFX_CLR_STRUCT(hold_param);
 
 	AEFX_SuiteScoper<PF_HandleSuite1> handleSuite = AEFX_SuiteScoper<PF_HandleSuite1>(	in_dataP,
 																					kPFHandleSuite,
@@ -352,23 +274,13 @@ PreRender(
 		
 		if (infoP) {
 			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
-									IMP_IMPACT_FRAME, 
+									IMP_INTENSITY, 
 									in_dataP->current_time, 
 									in_dataP->time_step, 
 									in_dataP->time_scale, 
 									&intensity_param));
 			
-			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
-									IMP_HOLD, 
-									in_dataP->current_time, 
-									in_dataP->time_step, 
-									in_dataP->time_scale, 
-									&hold_param));
-			
 			if (!err){
-				infoP->widthL = in_dataP->width;
-				infoP->heightL = in_dataP->height;
-				infoP->holdActiveB = hold_param.u.pd.value == 1;
 				infoP->impactIntensityF = intensity_param.u.fs_d.value;
 			}
 			

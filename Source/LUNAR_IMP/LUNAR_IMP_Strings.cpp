@@ -17,9 +17,7 @@ typedef struct {
 } TableString;
 
 TableString		g_strs[StrID_NUMTYPES] = {
-	StrID_NONE,						"",
-	StrID_HoldChoices,				"No|"
-									"Yes"
+	StrID_NONE,						""
 };
 
 char *GetStringPtr(int strNum)
