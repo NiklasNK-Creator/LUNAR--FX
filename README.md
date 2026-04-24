@@ -31,6 +31,17 @@ LUNAR --FX is a collection of After Effects plugins designed to **let your edit 
 
 ---
 
+## LUNAR.IMP
+
+### Parameters
+
+- **Impact Frame** (checkbox): Capture current frame as impact frame
+- **Hold** (checkbox): Lock to first captured impact frame
+- **Radius** (0-100): Coverage from center
+- **Edge Type** (dropdown): fade, hard, flame, paint, grade, blend, rough
+
+---
+
 ## 🔧 Compatibility
 
 | Feature | Support |
