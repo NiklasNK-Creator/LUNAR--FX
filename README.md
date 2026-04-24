@@ -23,21 +23,11 @@ LUNAR --FX is a collection of After Effects plugins designed to **let your edit 
 
 ---
 
-## ✨ LUNAR.SNITCH
-
-Let your edit shine like a moon.
+## LUNAR.SNITCH
 
 ### Parameters
 
 - **Intensity** (0-100): Single control for all enhancement effects
-
-### Installation
-
-1. Download `LUNAR_FX_Installer.exe` from the [Releases](https://github.com/NiklasNK-Creator/LUNAR--FX/releases) section
-2. Run the installer
-3. Select your After Effects version (2020 or newer)
-4. Click "Install LUNAR --FX"
-5. Restart After Effects
 
 ---
 
