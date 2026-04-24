@@ -108,6 +108,16 @@ class LUNARInstaller:
         
         self.check_plugins()
     
+    def check_plugins(self):
+        plugin_files = list(self.plugin_dir.glob("*.aex"))
+        if plugin_files:
+            plugin_names = [f.name for f in plugin_files]
+            self.plugin_text.delete("1.0", "end")
+            self.plugin_text.insert("1.0", "\n".join(plugin_names))
+        else:
+            self.plugin_text.delete("1.0", "end")
+            self.plugin_text.insert("1.0", "No plugins found in Build directory")
+    
     def detect_after_effects(self):
         self.ae_versions = []
         
