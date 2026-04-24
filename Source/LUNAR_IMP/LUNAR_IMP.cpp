@@ -12,6 +12,10 @@
 #include "LUNAR_IMP.h"
 #include <stdio.h>
 
+static char impact_frame_choices[] = "No\0Yes\0";
+static char hold_choices[] = "No\0Yes\0";
+static char edge_type_choices[] = "Fade\0Hard\0Flame\0Paint\0Grade\0Blend\0Rough\0";
+
 static PF_Err 
 About (	
 	PF_InData		*in_data,
@@ -90,10 +94,13 @@ ParamsSetup (
 	
 	AEFX_CLR_STRUCT(def);
 	
-	PF_ADD_POPUP("Impact Frame", 2, 0, "No\0Yes\0", IMPACT_FRAME_DISK_ID);
+	PF_ADD_POPUP("Impact Frame", 2, 0, impact_frame_choices, IMPACT_FRAME_DISK_ID);
 	
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP("Hold", 2, 0, "No\0Yes\0", HOLD_DISK_ID);
+	PF_ADD_POPUP("Hold", 2, 0, hold_choices, HOLD_DISK_ID);
+	
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_POINT("Anchor", 50, 50, FALSE, ANCHOR_DISK_ID);
 	
 	PF_ADD_FLOAT_SLIDERX("Radius", 
 						RADIUS_MIN,
@@ -107,7 +114,7 @@ ParamsSetup (
 						RADIUS_DISK_ID);
 	
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP("Edge Type", 7, 0, "Fade\0Hard\0Flame\0Paint\0Grade\0Blend\0Rough\0", EDGE_TYPE_DISK_ID);
+	PF_ADD_POPUP("Edge Type", 7, 0, edge_type_choices, EDGE_TYPE_DISK_ID);
 	
 	out_data->num_params = IMP_NUM_PARAMS;
 
@@ -182,8 +189,8 @@ static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, PF_Pixel8 *impactP,
 		return;
 	}
 	
-	PF_FpLong anchorX = iiP->widthL / 2.0;
-	PF_FpLong anchorY = iiP->heightL / 2.0;
+	PF_FpLong anchorX = FIX_2_FLOAT(iiP->anchorX) * iiP->widthL / 100.0;
+	PF_FpLong anchorY = FIX_2_FLOAT(iiP->anchorY) * iiP->heightL / 100.0;
 	
 	PF_FpLong distX = (x - anchorX) / (PF_FpLong)iiP->widthL;
 	PF_FpLong distY = (y - anchorY) / (PF_FpLong)iiP->heightL;
@@ -288,6 +295,8 @@ Render (
 	iiP.widthL = in_dataP->width;
 	iiP.heightL = in_dataP->height;
 	iiP.holdActiveB = params[IMP_HOLD]->u.pd.value == 1;
+	iiP.anchorX = params[IMP_ANCHOR]->u.td.x_value;
+	iiP.anchorY = params[IMP_ANCHOR]->u.td.y_value;
 	iiP.impactFilePath[0] = '\0';
 	
 	if (params[IMP_IMPACT_FRAME]->u.pd.value == 1) {
@@ -390,12 +399,13 @@ PreRender(
 	PF_PreRenderExtra	*extraP)
 {
 	PF_Err err = PF_Err_NONE;
-	PF_ParamDef impact_param, hold_param, radius_param, edge_param;
+	PF_ParamDef impact_param, hold_param, anchor_param, radius_param, edge_param;
 	PF_RenderRequest req = extraP->input->output_request;
 	PF_CheckoutResult in_result;
 	
 	AEFX_CLR_STRUCT(impact_param);
 	AEFX_CLR_STRUCT(hold_param);
+	AEFX_CLR_STRUCT(anchor_param);
 	AEFX_CLR_STRUCT(radius_param);
 	AEFX_CLR_STRUCT(edge_param);
 
@@ -429,6 +439,13 @@ PreRender(
 									&hold_param));
 			
 			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
+									IMP_ANCHOR, 
+									in_dataP->current_time, 
+									in_dataP->time_step, 
+									in_dataP->time_scale, 
+									&anchor_param));
+			
+			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
 									IMP_RADIUS, 
 									in_dataP->current_time, 
 									in_dataP->time_step, 
@@ -448,6 +465,8 @@ PreRender(
 				infoP->widthL = in_dataP->width;
 				infoP->heightL = in_dataP->height;
 				infoP->holdActiveB = hold_param.u.pd.value == 1;
+				infoP->anchorX = anchor_param.u.td.x_value;
+				infoP->anchorY = anchor_param.u.td.y_value;
 				infoP->impactFilePath[0] = '\0';
 				
 				if (impact_param.u.pd.value == 1) {

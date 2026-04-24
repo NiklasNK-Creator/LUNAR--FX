@@ -44,6 +44,7 @@ enum {
 	IMP_INPUT = 0,
 	IMP_IMPACT_FRAME,
 	IMP_HOLD,
+	IMP_ANCHOR,
 	IMP_RADIUS,
 	IMP_EDGE_TYPE,
 	IMP_NUM_PARAMS
@@ -52,6 +53,7 @@ enum {
 enum {
 	IMPACT_FRAME_DISK_ID = 1,
 	HOLD_DISK_ID,
+	ANCHOR_DISK_ID,
 	RADIUS_DISK_ID,
 	EDGE_TYPE_DISK_ID
 };
@@ -82,6 +84,8 @@ typedef struct ImpInfo {
 	A_long		heightL;
 	A_long		impactFrameL;
 	A_Boolean	holdActiveB;
+	PF_Fixed	anchorX;
+	PF_Fixed	anchorY;
 	char		impactFilePath[256];
 } ImpInfo, *ImpInfoP, **ImpInfoH;
 
