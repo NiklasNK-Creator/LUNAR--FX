@@ -4,10 +4,11 @@
 
 **Unique After Effects Plugins for Video Editors**
 
+[![GitHub](https://img.shields.io/badge/GitHub-View%20Source-lightgrey?logo=github)](https://github.com/NiklasNK-Creator/LUNAR--FX)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 [![After Effects](https://img.shields.io/badge/After%20Effects-2020%2B-purple.svg)](https://www.adobe.com/products/aftereffects)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)](https://github.com/LUNAR-FX/LUNAR--FX/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)](https://github.com/NiklasNK-Creator/LUNAR--FX/releases)
 
 </div>
 
