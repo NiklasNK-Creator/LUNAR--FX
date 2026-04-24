@@ -43,15 +43,18 @@
 enum {
 	IMP_INPUT = 0,
 	IMP_INTENSITY,
+	IMP_HOLD,
 	IMP_NUM_PARAMS
 };
 
 enum {
-	INTENSITY_DISK_ID = 1
+	INTENSITY_DISK_ID = 1,
+	HOLD_DISK_ID
 };
 
 enum {
 	StrID_NONE = 0,
+	StrID_HoldChoices,
 	StrID_NUMTYPES
 };
 
@@ -78,6 +81,9 @@ extern "C" {
 
 typedef struct ImpInfo {
 	PF_FpLong	impactIntensityF;
+	A_Boolean	holdActiveB;
+	A_long		widthL;
+	A_long		heightL;
 } ImpInfo, *ImpInfoP, **ImpInfoH;
 
 typedef struct {

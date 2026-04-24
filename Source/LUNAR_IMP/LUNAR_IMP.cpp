@@ -89,7 +89,7 @@ ParamsSetup (
 	PF_ParamDef		def;
 	
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX("Intensity", 
+	PF_ADD_FLOAT_SLIDERX("Impact Intensity", 
 						INTENSITY_MIN,
 						INTENSITY_MAX,
 						INTENSITY_MIN,
@@ -99,6 +99,9 @@ ParamsSetup (
 						DISPLAY_FLAGS,
 						0,
 						INTENSITY_DISK_ID);
+
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_POPUP("Hold Frame", 2, 0, STR(StrID_HoldChoices), HOLD_DISK_ID);
 	
 	out_data->num_params = IMP_NUM_PARAMS;
 
@@ -142,7 +145,31 @@ FilterImage8 (
 	ImpInfo *		iiP		= reinterpret_cast<ImpInfo*>(refcon);
 				
 	if (iiP && iiP->impactIntensityF > 0.0) {
-		ApplyImpEffect8(inP, outP, iiP);
+		static PF_Pixel8 *frameBuffer = NULL;
+		static A_long bufferWidth = 0;
+		static A_long bufferHeight = 0;
+		static A_Boolean frameCaptured = FALSE;
+		
+		if (iiP->holdActiveB && frameCaptured && bufferWidth == iiP->widthL && bufferHeight == iiP->heightL) {
+			PF_Pixel8 *capturedP = frameBuffer + yL * iiP->widthL + xL;
+			ApplyImpEffect8(capturedP, outP, iiP);
+		} else {
+			if (!frameBuffer || bufferWidth != iiP->widthL || bufferHeight != iiP->heightL) {
+				if (frameBuffer) free(frameBuffer);
+				bufferWidth = iiP->widthL;
+				bufferHeight = iiP->heightL;
+				frameBuffer = (PF_Pixel8*)calloc(bufferWidth * bufferHeight, sizeof(PF_Pixel8));
+				frameCaptured = FALSE;
+			}
+			
+			if (frameBuffer) {
+				frameBuffer[yL * iiP->widthL + xL] = *inP;
+				if (xL == bufferWidth-1 && yL == bufferHeight-1) frameCaptured = TRUE;
+				ApplyImpEffect8(inP, outP, iiP);
+			} else {
+				*outP = *inP;
+			}
+		}
 	} else {
 		*outP = *inP;
 	}
@@ -164,7 +191,10 @@ Render (
 	AEFX_CLR_STRUCT(iiP);
 	
 	linesL 		= output->extent_hint.bottom - output->extent_hint.top;
+	iiP.widthL = in_dataP->width;
+	iiP.heightL = in_dataP->height;
 	iiP.impactIntensityF = params[IMP_INTENSITY]->u.fs_d.value;
+	iiP.holdActiveB = params[IMP_HOLD]->u.pd.value == 1;
 
 	if (in_dataP->appl_id == 'PrMr') {
 
@@ -256,11 +286,12 @@ PreRender(
 	PF_PreRenderExtra	*extraP)
 {
 	PF_Err err = PF_Err_NONE;
-	PF_ParamDef intensity_param;
+	PF_ParamDef intensity_param, hold_param;
 	PF_RenderRequest req = extraP->input->output_request;
 	PF_CheckoutResult in_result;
 	
 	AEFX_CLR_STRUCT(intensity_param);
+	AEFX_CLR_STRUCT(hold_param);
 
 	AEFX_SuiteScoper<PF_HandleSuite1> handleSuite = AEFX_SuiteScoper<PF_HandleSuite1>(	in_dataP,
 																					kPFHandleSuite,
@@ -280,8 +311,18 @@ PreRender(
 									in_dataP->time_scale, 
 									&intensity_param));
 			
+			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
+									IMP_HOLD, 
+									in_dataP->current_time, 
+									in_dataP->time_step, 
+									in_dataP->time_scale, 
+									&hold_param));
+			
 			if (!err){
+				infoP->widthL = in_dataP->width;
+				infoP->heightL = in_dataP->height;
 				infoP->impactIntensityF = intensity_param.u.fs_d.value;
+				infoP->holdActiveB = hold_param.u.pd.value == 1;
 			}
 			
 			ERR(extraP->cb->checkout_layer(	in_dataP->effect_ref,
