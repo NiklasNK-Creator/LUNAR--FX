@@ -18,8 +18,6 @@ typedef struct {
 
 TableString		g_strs[StrID_NUMTYPES] = {
 	StrID_NONE,						"",
-	StrID_ImpactFrameChoices,		"No|"
-									"Yes",
 	StrID_HoldChoices,				"No|"
 									"Yes",
 	StrID_EdgeTypeChoices,			"Fade|"

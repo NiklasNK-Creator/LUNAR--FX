@@ -20,7 +20,7 @@ About (
 	PF_LayerDef		*output )
 {
 	PF_SPRINTF(	out_data->return_msg, 
-				"%s v%d.%d\r%s",
+				"%s v%d.%d\r%s\r\rLUNAR --FX\rhttps://github.com/NiklasNK-Creator/LUNAR--FX",
 				NAME, 
 				MAJOR_VERSION, 
 				MINOR_VERSION, 
@@ -90,7 +90,16 @@ ParamsSetup (
 	
 	AEFX_CLR_STRUCT(def);
 	
-	PF_ADD_POPUP("Impact Frame", 2, 0, STR(StrID_ImpactFrameChoices), IMPACT_FRAME_DISK_ID);
+	PF_ADD_FLOAT_SLIDERX("Intensity", 
+						INTENSITY_MIN,
+						INTENSITY_MAX,
+						INTENSITY_MIN,
+						INTENSITY_MAX,
+						INTENSITY_DEFAULT,
+						SLIDER_PRECISION,
+						DISPLAY_FLAGS,
+						0,
+						IMPACT_FRAME_DISK_ID);
 	
 	PF_ADD_POPUP("Hold", 2, 0, STR(StrID_HoldChoices), HOLD_DISK_ID);
 	
@@ -170,6 +179,13 @@ static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, PF_Pixel8 *impactP,
 {
 	if (!iiP || !inP || !outP || !impactP) return;
 	
+	PF_FpLong intensity = iiP->impactIntensityF / 100.0;
+	
+	if (intensity <= 0.0) {
+		*outP = *inP;
+		return;
+	}
+	
 	PF_FpLong radius = iiP->radiusF / 100.0;
 	
 	if (radius <= 0.0) {
@@ -214,7 +230,7 @@ static void ApplyImpEffect8(PF_Pixel8 *inP, PF_Pixel8 *outP, PF_Pixel8 *impactP,
 			break;
 	}
 	
-	PF_FpLong brightness = 1.0 + blast * 0.5;
+	PF_FpLong brightness = 1.0 + blast * 0.5 * intensity;
 	
 	outP->alpha = inP->alpha;
 	outP->red = (A_u_char)clamp(inP->red * brightness, 0.0, 255.0);
@@ -234,38 +250,30 @@ FilterImage8 (
 	
 	ImpInfo *		iiP		= reinterpret_cast<ImpInfo*>(refcon);
 				
-	if (iiP) {
+	if (iiP && iiP->impactIntensityF > 0.0) {
 		static PF_Pixel8 *capturedFrameBuffer = NULL;
 		static A_long bufferWidth = 0;
 		static A_long bufferHeight = 0;
-		static A_long capturedFrameTime = -1;
 		
-		if (iiP->impactFrameL > 0) {
-			if (iiP->holdActiveB && capturedFrameBuffer && bufferWidth == iiP->widthL && bufferHeight == iiP->heightL) {
-				PF_Pixel8 *capturedPixelP = capturedFrameBuffer + yL * iiP->widthL + xL;
-				ApplyImpEffect8(capturedPixelP, outP, capturedPixelP, iiP, xL, yL);
-			} else {
-				if (!capturedFrameBuffer || bufferWidth != iiP->widthL || bufferHeight != iiP->heightL) {
-					if (capturedFrameBuffer) {
-						free(capturedFrameBuffer);
-					}
-					bufferWidth = iiP->widthL;
-					bufferHeight = iiP->heightL;
-					capturedFrameBuffer = (PF_Pixel8*)malloc(bufferWidth * bufferHeight * sizeof(PF_Pixel8));
-				}
-				
-				if (capturedFrameBuffer) {
-					capturedFrameBuffer[yL * iiP->widthL + xL] = *inP;
-					if (xL == bufferWidth - 1 && yL == bufferHeight - 1) {
-						capturedFrameTime = iiP->impactFrameL;
-					}
-					ApplyImpEffect8(inP, outP, inP, iiP, xL, yL);
-				} else {
-					*outP = *inP;
-				}
-			}
+		if (iiP->holdActiveB && capturedFrameBuffer && bufferWidth == iiP->widthL && bufferHeight == iiP->heightL) {
+			PF_Pixel8 *capturedPixelP = capturedFrameBuffer + yL * iiP->widthL + xL;
+			ApplyImpEffect8(capturedPixelP, outP, capturedPixelP, iiP, xL, yL);
 		} else {
-			*outP = *inP;
+			if (!capturedFrameBuffer || bufferWidth != iiP->widthL || bufferHeight != iiP->heightL) {
+				if (capturedFrameBuffer) {
+					free(capturedFrameBuffer);
+				}
+				bufferWidth = iiP->widthL;
+				bufferHeight = iiP->heightL;
+				capturedFrameBuffer = (PF_Pixel8*)malloc(bufferWidth * bufferHeight * sizeof(PF_Pixel8));
+			}
+			
+			if (capturedFrameBuffer) {
+				capturedFrameBuffer[yL * iiP->widthL + xL] = *inP;
+				ApplyImpEffect8(inP, outP, inP, iiP, xL, yL);
+			} else {
+				*outP = *inP;
+			}
 		}
 	} else {
 		*outP = *inP;
@@ -295,12 +303,7 @@ Render (
 	iiP.holdActiveB = params[IMP_HOLD]->u.pd.value == 1;
 	iiP.anchorX = params[IMP_ANCHOR]->u.td.x_value;
 	iiP.anchorY = params[IMP_ANCHOR]->u.td.y_value;
-	
-	if (params[IMP_IMPACT_FRAME]->u.pd.value == 1) {
-		iiP.impactFrameL = in_dataP->current_time;
-	} else {
-		iiP.impactFrameL = 0;
-	}
+	iiP.impactIntensityF = params[IMP_IMPACT_FRAME]->u.fs_d.value;
 
 	if (in_dataP->appl_id == 'PrMr') {
 
@@ -392,11 +395,11 @@ PreRender(
 	PF_PreRenderExtra	*extraP)
 {
 	PF_Err err = PF_Err_NONE;
-	PF_ParamDef impact_param, hold_param, anchor_param, radius_param, edge_param;
+	PF_ParamDef intensity_param, hold_param, anchor_param, radius_param, edge_param;
 	PF_RenderRequest req = extraP->input->output_request;
 	PF_CheckoutResult in_result;
 	
-	AEFX_CLR_STRUCT(impact_param);
+	AEFX_CLR_STRUCT(intensity_param);
 	AEFX_CLR_STRUCT(hold_param);
 	AEFX_CLR_STRUCT(anchor_param);
 	AEFX_CLR_STRUCT(radius_param);
@@ -418,7 +421,7 @@ PreRender(
 									in_dataP->current_time, 
 									in_dataP->time_step, 
 									in_dataP->time_scale, 
-									&impact_param));
+									&intensity_param));
 			
 			ERR(PF_CHECKOUT_PARAM(	in_dataP, 
 									IMP_HOLD, 
@@ -456,12 +459,7 @@ PreRender(
 				infoP->holdActiveB = hold_param.u.pd.value == 1;
 				infoP->anchorX = anchor_param.u.td.x_value;
 				infoP->anchorY = anchor_param.u.td.y_value;
-				
-				if (impact_param.u.pd.value == 1) {
-					infoP->impactFrameL = in_dataP->current_time;
-				} else {
-					infoP->impactFrameL = 0;
-				}
+				infoP->impactIntensityF = intensity_param.u.fs_d.value;
 			}
 			
 			ERR(extraP->cb->checkout_layer(	in_dataP->effect_ref,

@@ -60,7 +60,6 @@ enum {
 
 enum {
 	StrID_NONE = 0,
-	StrID_ImpactFrameChoices,
 	StrID_HoldChoices,
 	StrID_EdgeTypeChoices,
 	StrID_NUMTYPES
@@ -71,6 +70,10 @@ enum {
 #define RADIUS_MIN		0
 #define RADIUS_MAX		100
 #define RADIUS_DEFAULT	50
+
+#define INTENSITY_MIN	0
+#define INTENSITY_MAX	100
+#define INTENSITY_DEFAULT	0
 
 #define SLIDER_PRECISION	1
 #define DISPLAY_FLAGS		PF_ValueDisplayFlag_PERCENT
@@ -92,7 +95,7 @@ typedef struct ImpInfo {
 	A_long		edgeTypeL;
 	A_long		widthL;
 	A_long		heightL;
-	A_long		impactFrameL;
+	PF_FpLong	impactIntensityF;
 	A_Boolean	holdActiveB;
 	PF_Fixed	anchorX;
 	PF_Fixed	anchorY;
