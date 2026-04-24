@@ -227,7 +227,7 @@ class LUNARInstaller:
         selected = self.version_combo.get()
         for ae_info in self.ae_versions:
             if f"{ae_info['name']} (v{ae_info['version']})" == selected:
-                plugins_path = Path(ae_info['path']) / "Plug-ins"
+                plugins_path = Path(ae_info['path']) / "Support Files" / "Plug-ins"
                 lunar_path = plugins_path / "LUNAR --FX"
                 self.install_path.set(str(lunar_path))
                 break

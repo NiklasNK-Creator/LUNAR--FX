@@ -31,6 +31,7 @@ def build_installer():
     output_dir = Path(__file__).parent.parent.parent / "Build"
     plugin_dir = Path(__file__).parent.parent.parent / "plugins" / "LUNAR_FX.aex"
     readme_path = Path(__file__).parent.parent.parent / "README.md"
+    manifest_path = Path(__file__).parent / "app.manifest"
     
     # Ensure output directory exists
     output_dir.mkdir(exist_ok=True)
@@ -42,6 +43,7 @@ def build_installer():
         sys.executable, "-m", "PyInstaller",
         "--onefile",                    # Create single executable
         "--windowed",                   # Hide console window (GUI app)
+        "--uac-admin",                 # Request admin rights
         "--name=LUNAR_FX_Installer",    # Output executable name
         f"--distpath={output_dir}",     # Output directory
         f"--workpath={os.path.join(output_dir, 'build')}", # Build directory
