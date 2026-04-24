@@ -58,6 +58,16 @@ enum {
 	EDGE_TYPE_DISK_ID
 };
 
+enum {
+	StrID_NONE = 0,
+	StrID_ImpactFrameChoices,
+	StrID_HoldChoices,
+	StrID_EdgeTypeChoices,
+	StrID_NUMTYPES
+};
+
+#define STR(x) GetStringPtr(x)
+
 #define RADIUS_MIN		0
 #define RADIUS_MAX		100
 #define RADIUS_DEFAULT	50

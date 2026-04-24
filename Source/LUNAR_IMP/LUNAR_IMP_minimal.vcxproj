@@ -48,6 +48,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="LUNAR_IMP.cpp" />
+    <ClCompile Include="LUNAR_IMP_Strings.cpp" />
     <ClCompile Include="d:\projekte\LUNAR --FX\SDK\AfterEffectsSDK\Examples\Util\Smart_Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
